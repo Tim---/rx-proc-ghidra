@@ -321,10 +321,12 @@ szRiRb_dst: [reg0_4, reg4_4]    is sz4_2 = 0x2 & reg0_4; reg4_4 { local tmp:4 = 
 
 
 ## Memory infix version of LD source operand with displacement that scales by size of data
-ld_src: szld_src          is mode_ld = 0x3  & szld_src         [ mode_sz = mode_mi; ] { build szld_src; export szld_src; }
+# Register direct (ld=11) is always the whole 32-bit register: memex only sizes memory operands.
+# (szld_src/szldu_src keep their sized register cases for MOV/MOVU Rs,Rd.)
+ld_src: reg4_4            is mode_ld = 0x3  & reg4_4                                   { local tmp:4 = reg4_4; export tmp; }
 ld_src: szld_src^szdsc    is mode_ld != 0x3 & szld_src & szdsc [ mode_sz = mode_mi; ] { build szld_src; export szld_src; }
 
-ldu_src: szldu_src        is mode_ld = 0x3  & szldu_src         [ mode_sz = mode_mi; ] { build szldu_src; export szldu_src; }
+ldu_src: reg4_4           is mode_ld = 0x3  & reg4_4                                    { local tmp:4 = reg4_4; export tmp; }
 ldu_src: szldu_src^szdsc  is mode_ld != 0x3 & szldu_src & szdsc [ mode_sz = mode_mi; ] { build szldu_src; export szldu_src; }
 
 ## Memory infix version of LD destination operand with displacement that scales by size of data
