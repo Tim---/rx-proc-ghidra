@@ -2065,126 +2065,103 @@ popregs: is popr15 & popr14 & popr13 & popr12 & popr11 & popr10 & popr9 & popr8 
 }
 
 
-## SUNTIL.size - search until equal string p. 196
-### SUNTIL.B
-:SUNTIL^szdsc    is szdsc & op0_8 = 0x7F; op2_6 = 0b100000 & sz0_2 = 0 & sz0_2 [ mode_sz = sz0_2; ] {
-    local tmp:4;
-    local check_len:1;
+## SUNTIL.size - search until equal string: while (R3 != 0) { tmp = *R1++; R3--; if (tmp == R2) break; }
+## C and Z from tmp - R2 of the last comparison (S, O unchanged); R3 == 0 on entry leaves registers and flags unchanged (RXv1 manual)
+:SUNTIL^".B"    is op0_8 = 0x7F; op2_6 = 0b100000 & sz0_2 = 0 {
+    local tmp:4 = 0;
+    if (R3 == 0) goto <end>;
     <loop>
-    check_len = (R3 == 0);
-    if (check_len) goto <end>;
         tmp = zext(*:1 R1);
         R1 = R1 + 1;
         R3 = R3 - 1;
-        if (tmp == R2) goto <end>;
-    goto <loop>;
+        if (tmp == R2) goto <done>;
+    if (R3 != 0) goto <loop>;
+    <done>
+    # only C and Z change (RXv1 manual flag table: S and O unchanged)
+    $(C_flag) = tmp >= R2;
+    $(Z_flag) = tmp == R2;
     <end>
 }
 
-### SUNTIL.W
-:SUNTIL^szdsc    is szdsc & op0_8 = 0x7F; op2_6 = 0b100000 & sz0_2 = 1 & sz0_2 [ mode_sz = sz0_2; ] {
-    local tmp:4;
-    local check_len:1;
+:SUNTIL^".W"    is op0_8 = 0x7F; op2_6 = 0b100000 & sz0_2 = 1 {
+    local tmp:4 = 0;
+    if (R3 == 0) goto <end>;
     <loop>
-    check_len = (R3 == 0);
-    if (check_len) goto <end>;
         tmp = zext(*:2 R1);
         R1 = R1 + 2;
         R3 = R3 - 1;
-        if (tmp == R2) goto <end>;
-    goto <loop>;
+        if (tmp == R2) goto <done>;
+    if (R3 != 0) goto <loop>;
+    <done>
+    # only C and Z change (RXv1 manual flag table: S and O unchanged)
+    $(C_flag) = tmp >= R2;
+    $(Z_flag) = tmp == R2;
     <end>
 }
 
-### SUNTIL.L
-:SUNTIL^szdsc    is szdsc & op0_8 = 0x7F; op2_6 = 0b100000 & sz0_2 = 2 & sz0_2 [ mode_sz = sz0_2; ] {
-    local tmp:4;
-    local check_len:1;
+:SUNTIL^".L"    is op0_8 = 0x7F; op2_6 = 0b100000 & sz0_2 = 2 {
+    local tmp:4 = 0;
+    if (R3 == 0) goto <end>;
     <loop>
-    check_len = (R3 == 0);
-    if (check_len) goto <end>;
         tmp = *:4 R1;
         R1 = R1 + 4;
         R3 = R3 - 1;
-        if (tmp == R2) goto <end>;
-    goto <loop>;
+        if (tmp == R2) goto <done>;
+    if (R3 != 0) goto <loop>;
+    <done>
+    # only C and Z change (RXv1 manual flag table: S and O unchanged)
+    $(C_flag) = tmp >= R2;
+    $(Z_flag) = tmp == R2;
     <end>
 }
 
 
-## SWHILE - search while unequal string p. 198
+## SWHILE.size - search while equal string: as SUNTIL but stops on the first tmp != R2
 :SWHILE^".B"    is op0_8 = 0x7F; op2_6 = 0b100001 & sz0_2 = 0 {
-    local check_len:1;
-    local tmp:4;
-
+    local tmp:4 = 0;
+    if (R3 == 0) goto <end>;
     <loop>
-    check_len = (R3 == 0);
-    if (check_len) goto <endloop>;
         tmp = zext(*:1 R1);
         R1 = R1 + 1;
         R3 = R3 - 1;
-        if (R1 != R2) goto <unmatch>;
-    goto <loop>;
-
-    <endloop>
-    $(Z_flag) = 1;
-    $(C_flag) = 1;
-    goto <end>;
-
-    <unmatch>
-    $(Z_flag) = 0;
-    $(C_flag) = ((tmp - R2) s>= 0);
-
+        if (tmp != R2) goto <done>;
+    if (R3 != 0) goto <loop>;
+    <done>
+    # only C and Z change (RXv1 manual flag table: S and O unchanged)
+    $(C_flag) = tmp >= R2;
+    $(Z_flag) = tmp == R2;
     <end>
 }
 
 :SWHILE^".W"    is op0_8 = 0x7F; op2_6 = 0b100001 & sz0_2 = 1 {
-    local check_len:1;
-    local tmp:4;
-
+    local tmp:4 = 0;
+    if (R3 == 0) goto <end>;
     <loop>
-    check_len = (R3 == 0);
-    if (check_len) goto <endloop>;
         tmp = zext(*:2 R1);
-        R1 = R1 + 1;
+        R1 = R1 + 2;
         R3 = R3 - 1;
-        if (R1 != R2) goto <unmatch>;
-    goto <loop>;
-
-    <endloop>
-    $(Z_flag) = 1;
-    $(C_flag) = 1;
-    goto <end>;
-
-    <unmatch>
-    $(Z_flag) = 0;
-    $(C_flag) = ((tmp - R2) s>= 0);
-
+        if (tmp != R2) goto <done>;
+    if (R3 != 0) goto <loop>;
+    <done>
+    # only C and Z change (RXv1 manual flag table: S and O unchanged)
+    $(C_flag) = tmp >= R2;
+    $(Z_flag) = tmp == R2;
     <end>
 }
 
 :SWHILE^".L"    is op0_8 = 0x7F; op2_6 = 0b100001 & sz0_2 = 2 {
-    local check_len:1;
-    local tmp:4;
-
+    local tmp:4 = 0;
+    if (R3 == 0) goto <end>;
     <loop>
-    check_len = (R3 == 0);
-    if (check_len) goto <endloop>;
         tmp = *:4 R1;
-        R1 = R1 + 1;
+        R1 = R1 + 4;
         R3 = R3 - 1;
-        if (R1 != R2) goto <unmatch>;
-    goto <loop>;
-
-    <endloop>
-    $(Z_flag) = 1;
-    $(C_flag) = 1;
-    goto <end>;
-
-    <unmatch>
-    $(Z_flag) = 0;
-    $(C_flag) = ((tmp - R2) s>= 0);
-
+        if (tmp != R2) goto <done>;
+    if (R3 != 0) goto <loop>;
+    <done>
+    # only C and Z change (RXv1 manual flag table: S and O unchanged)
+    $(C_flag) = tmp >= R2;
+    $(Z_flag) = tmp == R2;
     <end>
 }
 
