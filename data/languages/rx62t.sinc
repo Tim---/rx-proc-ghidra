@@ -2084,8 +2084,8 @@ popregs: is popr15 & popr14 & popr13 & popr12 & popr11 & popr10 & popr9 & popr8 
     reg0_4 = liop;
 }
 
-### (2) STNZ Rs, Rd
-:STNZ reg4_4, reg0_4    is op0_8 = 0xFC; op0_8 = 0x4B; reg4_4 & reg0_4 {
+### (2) STNZ Rs, Rd (RXv2; binutils: 1111 1100 0100 1111 rsrc rdst)
+:STNZ reg4_4, reg0_4    is op0_8 = 0xFC; op0_8 = 0x4F; reg4_4 & reg0_4 {
     if ($(Z_flag) == 1) goto inst_next;
     reg0_4 = reg4_4;
 }
@@ -2098,12 +2098,11 @@ popregs: is popr15 & popr14 & popr13 & popr12 & popr11 & popr10 & popr9 & popr8 
     reg0_4 = liop;
 }
 
-# TODO: This has the same encoding as STNZ 2 in the manual!
-### (2) STZ Rs, Rd
-#:STZ reg4_4, reg0_4    is op0_8 = 0xFC; op0_8 = 0x4B; reg4_4 & reg0_4 {
-#    if ($(Z_flag) == 0) goto inst_next;
-#    reg0_4 = reg4_4;
-#}
+### (2) STZ Rs, Rd (RXv2; binutils: 1111 1100 0100 1011 rsrc rdst)
+:STZ reg4_4, reg0_4    is op0_8 = 0xFC; op0_8 = 0x4B; reg4_4 & reg0_4 {
+    if ($(Z_flag) == 0) goto inst_next;
+    reg0_4 = reg4_4;
+}
 
 
 ## SUB - subtraction without borrow p. 195
