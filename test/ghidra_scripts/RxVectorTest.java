@@ -69,7 +69,24 @@ public class RxVectorTest extends GhidraScript {
     private List<String[]> structuralChecks() {
         List<String[]> out = new ArrayList<>();
         out.add(new String[] { "layout", checkLayout() });
+        out.add(new String[] { "cspec", checkCspec() });
         return out;
+    }
+
+    /** Renesas RX ABI: arguments in R1-R4 (R15 is the struct-return pointer, not an argument);
+     *  callers remove stack arguments, so every prototype pops only the return address. */
+    private String checkCspec() {
+        StringBuilder err = new StringBuilder();
+        for (ghidra.program.model.lang.PrototypeModel pm : currentProgram.getCompilerSpec().getCallingConventions()) {
+            if (pm.getExtrapop() != 4) err.append(pm.getName()).append(" extrapop=").append(pm.getExtrapop()).append("; ");
+            List<String> regs = new ArrayList<>();
+            for (ghidra.program.model.listing.VariableStorage vs : pm.getPotentialInputRegisterStorage(currentProgram))
+                regs.add(vs.getRegister().getName());
+            if (regs.contains("R15")) err.append(pm.getName()).append(" takes R15 as an argument; ");
+            if (pm.getName().equals("__fastcall") && !regs.equals(List.of("R1", "R2", "R3", "R4")))
+                err.append("__fastcall inputs ").append(regs).append("; ");
+        }
+        return err.length() == 0 ? null : err.toString();
     }
 
     /** Base registers must not overlap, and the core register offsets must stay stable (old projects). */
