@@ -136,17 +136,30 @@ macro setResultFlags(result) {
 	$(S_flag) = (result s< 0);
 }
 
-macro setAddCarryFlags(op1,op2) {
-	$(C_flag) = (carry(op1,zext($(C_flag))) || carry(op2,op1 + zext($(C_flag))));
+# dest = dest + src + C, flags from the three-input addition (RXv1 manual: ADC)
+macro addWithCarry(dest, src) {
+	local cin:4 = zext($(C_flag));
+	local res:4 = dest + src + cin;
+	$(C_flag) = carry(dest, src) || carry(dest + src, cin);
+	$(O_flag) = ((~(dest ^ src)) & (dest ^ res)) s< 0;
+	dest = res;
+	setResultFlags(dest);
+}
+
+# dest = dest - src - !C, C = no unsigned borrow (RXv1 manual: SBB)
+macro subWithBorrow(dest, src) {
+	local bin:8 = zext($(C_flag) == 0);
+	local res:4 = dest - src - bin:4;
+	local d8:8 = zext(dest);
+	local s8:8 = zext(src);
+	$(C_flag) = d8 >= (s8 + bin);
+	$(O_flag) = ((dest ^ src) & (dest ^ res)) s< 0;
+	dest = res;
+	setResultFlags(dest);
 }
 
 macro setAddFlags(op1,op2) {
 	$(C_flag) = carry(op1,op2);
-}
-
-macro setSubtractCarryFlags(op1,op2) {
-	notC = ~$(C_flag);
-	$(C_flag) = ((op1 < sext(notC)) || (op2 < (op1 - sext(notC))));
 }
 
 macro setSubtractFlags(op1,op2) {
@@ -495,27 +508,18 @@ popregs: is popr15 & popr14 & popr13 & popr12 & popr11 & popr10 & popr9 & popr8 
 ### ADC src, dest
 ### ADC #SIMM, Rd
 :ADC liop, reg0_4 is op0_8 = 0xFD; (op4_4 = 0x7 & li2_2 & ld0_2 = 0x0); (op4_4 = 0x2 & reg0_4); liop [ mode_li = li2_2; ] {
-     setAddCarryFlags(reg0_4, liop);
-     setAddOverflowFlags(reg0_4, liop);
-     reg0_4 = reg0_4 + liop + zext($(C_flag));
-     setResultFlags(reg0_4);
+     addWithCarry(reg0_4, liop);
 }
 
 ## ADC Rs, Rd
 :ADC reg4_4, reg0_4 is op0_8 = 0xFC; op0_8 = 0x0B; reg4_4 & reg0_4 {
-     setAddCarryFlags(reg0_4, reg4_4);
-     setAddOverflowFlags(reg0_4, reg4_4);
-     reg0_4 = reg0_4 + reg4_4 + zext($(C_flag));
-     setResultFlags(reg0_4);
+     addWithCarry(reg0_4, reg4_4);
 }
 
 ## ADC dsp[Rs].L, Rd
 :ADC ld_src, reg0_4 is op0_8 = 0x06; (mi6_2 = 0x02 & mi6_2 & op2_4 = 0x08 & ld0_2 < 0b11 & ld0_2); op0_8 = 0x02; (reg4_4 & reg0_4) ... & ld_src
 	[ mode_ld = ld0_2; mode_mi = mi6_2; ] {
-	setAddCarryFlags(ld_src, reg0_4);
-	setAddOverflowFlags(ld_src, reg0_4);
-	reg0_4 = reg0_4 + ld_src + zext($(C_flag));
-	setResultFlags(reg0_4);
+	addWithCarry(reg0_4, ld_src);
 }
 
 # ADD - addition without carry
@@ -1632,28 +1636,18 @@ popregs: is popr15 & popr14 & popr13 & popr12 & popr11 & popr10 & popr9 & popr8 
 
 ## ROLC - rotation with carry to left
 :ROLC reg0_4    is op0_8 = 0x7E; op4_4 = 0x5 & reg0_4 {
-    local highbit:1 = reg0_4[31,1];
-    $(C_flag) = highbit;
-    reg0_4 = reg0_4 << 1;
-
-    if (highbit == 0) goto <end>;
-    reg0_4 = reg0_4 | 1;
-
-    <end>
+    local cin:4 = zext($(C_flag));
+    $(C_flag) = reg0_4[31,1];
+    reg0_4 = (reg0_4 << 1) | cin;
     setResultFlags(reg0_4);
 }
 
 
-## RORC - rotation with carry to right
+## RORC - rotation with carry to right (C -> MSB, LSB -> C)
 :RORC reg0_4    is op0_8 = 0x7E; op4_4 = 0x4 & reg0_4 {
-    local lowbit:1 = reg0_4[0,1];
-    $(C_flag) = lowbit;
-    reg0_4 = reg0_4 >> 1;
-
-    if (lowbit == 0) goto <end>;
-    reg0_4[31,1] = 1;
-
-    <end>
+    local cin:4 = zext($(C_flag));
+    $(C_flag) = reg0_4[0,1];
+    reg0_4 = (reg0_4 >> 1) | (cin << 31);
     setResultFlags(reg0_4);
 }
 
@@ -1769,21 +1763,13 @@ popregs: is popr15 & popr14 & popr13 & popr12 & popr11 & popr10 & popr9 & popr8 
 ## SBB - subtraction with borrow
 ### (1) SBB Rs, Rd
 :SBB reg4_4, reg0_4    is op0_8 = 0xFC; op0_8 = 0x03; reg4_4 & reg0_4 {
-    local tmp:4 = reg4_4 - zext(($(C_flag) == 0));
-    setSubtractFlags(reg0_4, tmp);
-    setSubtractOverflowFlags(reg0_4, tmp);
-    reg0_4 = reg0_4 - tmp;
-    setResultFlags(reg0_4);
+    subWithBorrow(reg0_4, reg4_4);
 }
 
 
 ### (2) SBB dsp[Rs], Rd
 :SBB ld_src, reg0_4    is op0_8 = 0x06; op2_6 = 0b101000 & ld0_2 < 3 & ld0_2; op0_8 = 0x00; reg0_4 ... & ld_src [ mode_ld = ld0_2; mode_mi = 0x2; ] {
-    local tmp:4 = ld_src - zext(($(C_flag) == 0));
-    setSubtractFlags(reg0_4, tmp);
-    setSubtractOverflowFlags(reg0_4, tmp);
-    reg0_4 = reg0_4 - tmp;
-    setResultFlags(reg0_4);
+    subWithBorrow(reg0_4, ld_src);
 }
 
 
