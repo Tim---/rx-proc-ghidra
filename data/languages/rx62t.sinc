@@ -170,6 +170,17 @@ macro shiftLeft(dest, src, count) {
 	setResultFlags(dest);
 }
 
+# DIV/DIVU: dest is undefined when O is set (RXv1 manual), so the quotient is written unconditionally.
+macro divSigned(dest, divisor) {
+	$(O_flag) = (divisor == 0) || ((dest == 0x80000000) && (divisor == 0xFFFFFFFF));
+	dest = dest s/ divisor;
+}
+
+macro divUnsigned(dest, divisor) {
+	$(O_flag) = (divisor == 0);
+	dest = dest / divisor;
+}
+
 macro setAddFlags(op1,op2) {
 	$(C_flag) = carry(op1,op2);
 }
@@ -900,66 +911,36 @@ popregs: is popr15 & popr14 & popr13 & popr12 & popr11 & popr10 & popr9 & popr8 
 # DIV
 ## DIV #SIMM, Rd
 :DIV liop, reg0_4    is op0_8 = 0xFD; op4_4 = 0x7 & li2_2 & op0_2 = 0b00; op4_4 = 8 & reg0_4; liop [ mode_li = li2_2; ] {
-	if (liop == 0 || (liop == -2147483648 && reg0_4 == -1)) goto <overflow>;
-		reg0_4 = reg0_4 s/ liop;
-		goto <end>;
-	<overflow>
-		$(O_flag) = 1;
-	<end>
+	divSigned(reg0_4, liop);
 }
 
 ## DIV dsp[Rs].memex, Rd
 ## when memex == UB or src == Rs
 :DIV ld_src, reg0_4    is op0_8 = 0xFC; op2_6 = 0b1000 & ld0_2; reg0_4 ... & ld_src [ mode_ld = ld0_2; mode_mi = 4; ] {
-	if (ld_src == 0 || (ld_src == -2147483648 && reg0_4 == -1)) goto <overflow>;
-		reg0_4 = reg0_4 s/ ld_src;
-		goto <end>;
-	<overflow>
-		$(O_flag) = 1;
-	<end>
+	divSigned(reg0_4, ld_src);
 }
 
 ## when memex != UB
 :DIV  ld_src, reg0_4    is op0_8 = 0x06; mi6_2 & op2_4 = 0b1000 & ld0_2 != 0b11 & ld0_2; op0_8 = 0x08; reg0_4 ... & ld_src [ mode_ld = ld0_2; mode_mi = mi6_2; ] {
-	if (ld_src == 0 || (ld_src == -2147483648 && reg0_4 == -1)) goto <overflow>;
-		reg0_4 = reg0_4 s/ ld_src;
-		goto <end>;
-	<overflow>
-		$(O_flag) = 1;
-	<end>
+	divSigned(reg0_4, ld_src);
 }
 
 
 # DIVU
 ## DIVU #SIMM, Rd
 :DIVU liop, reg0_4    is op0_8 = 0xFD; op4_4 = 0x7 & li2_2 & op0_2 = 0b00; op4_4 = 0x9 & reg0_4; liop [ mode_li = li2_2; ] {
-	if (liop == 0) goto <overflow>;
-		reg0_4 = reg0_4 / liop;
-		goto <end>;
-	<overflow>
-		$(O_flag) = 1;
-	<end>
+	divUnsigned(reg0_4, liop);
 }
 
 ## DIVU dsp[Rs].memex, Rd
 ## when memex == UB or src == Rs
 :DIVU ld_src, reg0_4    is op0_8 = 0xFC; op2_6 = 0b1001 & ld0_2; reg0_4 ... & ld_src [ mode_ld = ld0_2; mode_mi = 4; ] {
-	if (ld_src == 0) goto <overflow>;
-		reg0_4 = reg0_4 / ld_src;
-		goto <end>;
-	<overflow>
-		$(O_flag) = 1;
-	<end>
+	divUnsigned(reg0_4, ld_src);
 }
 
 ## when memex != UB
 :DIVU ld_src, reg0_4    is op0_8 = 0x06; mi6_2 & op2_4 = 0b1000 & ld0_2 != 0b11 & ld0_2; op0_8 = 0x09; reg0_4 ... & ld_src [ mode_ld = ld0_2; mode_mi = mi6_2; ] {
-	if (ld_src == 0) goto <overflow>;
-		reg0_4 = reg0_4 / ld_src;
-		goto <end>;
-	<overflow>
-		$(O_flag) = 1;
-	<end>
+	divUnsigned(reg0_4, ld_src);
 }
 
 
