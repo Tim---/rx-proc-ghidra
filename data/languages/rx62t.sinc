@@ -1857,7 +1857,7 @@ popregs: is popr15 & popr14 & popr13 & popr12 & popr11 & popr10 & popr9 & popr8 
     local carrybit = (original >> (shift - 1)) & 1;
     reg0_4 = original s>> shift;
     $(C_flag) = carrybit:1;
-    setResultFlags(reg4_4);
+    setResultFlags(reg0_4);
     $(O_flag) = 0;
 }
 
