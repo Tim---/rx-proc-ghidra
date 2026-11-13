@@ -1121,16 +1121,16 @@ popregs: is popr15 & popr14 & popr13 & popr12 & popr11 & popr10 & popr9 & popr8 
 
 # FTOI - float to signed integer p. 103
 :FTOI ld_src, reg0_4    is op0_8 = 0xFC; op2_6 = 0b100101 & ld0_2; reg0_4 ... & ld_src [ mode_ld = ld0_2; mode_mi = 0x2; ] {
-    # TODO: FPSW flags, rounding
-    reg0_4 = round(ld_src);
+    # TODO: FPSW flags. Always rounds towards 0 (RXv1 manual: FTOI/FTOU)
+    reg0_4 = trunc(ld_src);
     setResultFlags(reg0_4);
 }
 
 
 # FTOU - float to unsigned integer p. 106
 :FTOU ld_src, reg0_4    is op0_8 = 0xFC; op2_6 = 0b101001 & ld0_2; reg0_4 ... & ld_src [ mode_ld = ld0_2; mode_mi = 0x2; ] {
-    # TODO: FPSW flags, rounding
-    reg0_4 = round(ld_src);
+    # TODO: FPSW flags. Always rounds towards 0 (RXv1 manual: FTOI/FTOU)
+    reg0_4 = trunc(ld_src);
     setResultFlags(reg0_4);
 }
 
