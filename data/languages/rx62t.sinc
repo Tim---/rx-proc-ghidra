@@ -158,6 +158,18 @@ macro subWithBorrow(dest, src) {
 	setResultFlags(dest);
 }
 
+# SHLL: dest = src << (count & 31). C = last bit shifted out; O = 0 iff the result MSB equals every
+# shifted-out bit; both cleared when the count is 0 (RXv1 manual). Branch-free.
+macro shiftLeft(dest, src, count) {
+	local n:4 = count & 31;
+	local nz:1 = n != 0;
+	local top:4 = src s>> (31 - n);
+	$(C_flag) = nz && (((src >> (32 - n)) & 1) != 0);
+	$(O_flag) = nz && (top != 0) && (top != 0xFFFFFFFF);
+	dest = src << n;
+	setResultFlags(dest);
+}
+
 macro setAddFlags(op1,op2) {
 	$(C_flag) = carry(op1,op2);
 }
@@ -1872,75 +1884,19 @@ popregs: is popr15 & popr14 & popr13 & popr12 & popr11 & popr10 & popr9 & popr8 
 ## SHLL - logical and arithmetic shift to the left p. 187
 ### (1) SHLL #IMM:5, Rd
 :SHLL "#"^imm, reg0_4    is op1_7 = 0b110110 & op0_1; op4_4 & reg0_4 [ imm = (op0_1 << 4) + op4_4; ] {
-    local shift = imm:1;
-    local original = reg0_4;
-    local carrybit = (original >> (32 - shift)) & 1;
-    reg0_4 = original << shift;
-    $(C_flag) = carrybit:1;
-    setResultFlags(reg0_4);
-
-    # O flag is cleared if shift does not change sign (i.e. shifted out bits and result MSB are all the same)
-    # "when scr [sic] is 0, this flag is also cleared" - Assuming this is a typo of src
-    if (shift == 0) goto <unseto>;
-    local tmp:4 = original >> (32 - shift - 1);
-    if (tmp == 0) goto <unseto>;
-    if (tmp == ((1 << shift) - 1)) goto <unseto>;
-    goto <seto>;
-
-    <unseto>
-    $(O_flag) = 0;
-    goto <end>;
-    <seto>
-    $(O_flag) = 1;
-    <end>
+    local count:4 = imm;
+    shiftLeft(reg0_4, reg0_4, count);
 }
 
 ### (2) SHLL Rs, Rd
 :SHLL reg4_4, reg0_4    is op0_8 = 0xFD; op0_8 = 0x62; reg4_4 & reg0_4 {
-    local shift = reg4_4 & 31;
-    local original = reg0_4;
-    local carrybit = (original >> (32 - shift)) & 1;
-    reg0_4 = original << shift;
-    $(C_flag) = carrybit:1;
-    setResultFlags(reg0_4);
-
-    # "when scr [sic] is 0, this flag is also cleared" - Assuming this is a typo of src
-    if (shift == 0) goto <unseto>;
-    local tmp:4 = original >> (32 - shift - 1);
-    if (tmp == 0) goto <unseto>;
-    if (tmp == ((1 << shift) - 1)) goto <unseto>;
-    goto <seto>;
-
-    <unseto>
-    $(O_flag) = 0;
-    goto <end>;
-    <seto>
-    $(O_flag) = 1;
-    <end>
+    shiftLeft(reg0_4, reg0_4, reg4_4);
 }
 
 ### (3) SHLL #IMM:5, Rs, Rd
 :SHLL "#"^uimm0_5, reg4_4, reg0_4    is op0_8 = 0xFD; op5_3 = 0b110 & uimm0_5; reg4_4 & reg0_4 {
-    local shift = uimm0_5:1;
-    local original = reg4_4;
-    local carrybit = (original >> (32 - shift)) & 1;
-    reg0_4 = original << shift;
-    $(C_flag) = carrybit:1;
-    setResultFlags(reg0_4);
-
-    # "when scr [sic] is 0, this flag is also cleared" - Assuming this is a typo of src
-    if (shift == 0) goto <unseto>;
-    local tmp:4 = original >> (32 - shift - 1);
-    if (tmp == 0) goto <unseto>;
-    if (tmp == ((1 << shift) - 1)) goto <unseto>;
-    goto <seto>;
-
-    <unseto>
-    $(O_flag) = 0;
-    goto <end>;
-    <seto>
-    $(O_flag) = 1;
-    <end>
+    local count:4 = uimm0_5;
+    shiftLeft(reg0_4, reg4_4, count);
 }
 
 
