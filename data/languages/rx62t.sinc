@@ -2210,20 +2210,42 @@ popregs: is popr15 & popr14 & popr13 & popr12 & popr11 & popr10 & popr9 & popr8 
 }
 
 
-## XCHG - exchange values p. 204
-### when memex == UB or src == Rs
-#### XCHG Rs, Rd
+## XCHG - exchange values (memory forms: memory extended per memex into Rd, low bytes of Rd stored)
 :XCHG reg4_4, reg0_4    is op0_8 = 0xFC; op2_6 = 0b10000 & ld0_2 = 0b11; reg4_4 & reg0_4 {
     local tmp:4 = reg4_4;
     reg4_4 = reg0_4;
     reg0_4 = tmp;
 }
 
-#### XCHG dsp[Rs].UB, Rd
-:XCHG ld_src, reg0_4    is op0_8 = 0xFC; op2_6 = 0b10000 & ld0_2 < 0b11 & ld0_2; reg0_4 ... & ld_src [ mode_ld = ld0_2; mode_mi = 4; ] unimpl
+# Address of a dsp[Rs].memex operand; the parent sets mode_ld and mode_mi
+xchg_mem: szlddsp^[reg4_4]^szdsc    is reg4_4 & szdsc; szlddsp    { local a:4 = reg4_4 + szlddsp; export a; }
+xchg_src: xchg_mem                  is xchg_mem [ mode_sz = mode_mi; ]  { export xchg_mem; }
 
-### when memex != UB
-:XCHG ld_src, reg0_4    is op0_8 = 0x06; mi6_2 & op2_4 = 0x8 & ld0_2 != 0b11 & ld0_2; op0_8 = 0x10; reg0_4 ... & ld_src [ mode_ld = ld0_2; mode_mi = mi6_2; ] unimpl
+:XCHG xchg_src, reg0_4    is op0_8 = 0xFC; op2_6 = 0b10000 & ld0_2 < 0b11 & ld0_2; reg0_4 ... & xchg_src [ mode_ld = ld0_2; mode_mi = 4; ] {
+    local tmp:4 = zext(*:1 xchg_src);
+    *:1 xchg_src = reg0_4:1;
+    reg0_4 = tmp;
+}
+:XCHG xchg_src, reg0_4    is op0_8 = 0x06; mi6_2 = 0 & op2_4 = 0x8 & ld0_2 != 0b11 & ld0_2; op0_8 = 0x10; reg0_4 ... & xchg_src [ mode_ld = ld0_2; mode_mi = 0; ] {
+    local tmp:4 = sext(*:1 xchg_src);
+    *:1 xchg_src = reg0_4:1;
+    reg0_4 = tmp;
+}
+:XCHG xchg_src, reg0_4    is op0_8 = 0x06; mi6_2 = 1 & op2_4 = 0x8 & ld0_2 != 0b11 & ld0_2; op0_8 = 0x10; reg0_4 ... & xchg_src [ mode_ld = ld0_2; mode_mi = 1; ] {
+    local tmp:4 = sext(*:2 xchg_src);
+    *:2 xchg_src = reg0_4:2;
+    reg0_4 = tmp;
+}
+:XCHG xchg_src, reg0_4    is op0_8 = 0x06; mi6_2 = 2 & op2_4 = 0x8 & ld0_2 != 0b11 & ld0_2; op0_8 = 0x10; reg0_4 ... & xchg_src [ mode_ld = ld0_2; mode_mi = 2; ] {
+    local tmp:4 = *:4 xchg_src;
+    *:4 xchg_src = reg0_4;
+    reg0_4 = tmp;
+}
+:XCHG xchg_src, reg0_4    is op0_8 = 0x06; mi6_2 = 3 & op2_4 = 0x8 & ld0_2 != 0b11 & ld0_2; op0_8 = 0x10; reg0_4 ... & xchg_src [ mode_ld = ld0_2; mode_mi = 3; ] {
+    local tmp:4 = zext(*:2 xchg_src);
+    *:2 xchg_src = reg0_4:2;
+    reg0_4 = tmp;
+}
 
 
 ## XOR p .301
