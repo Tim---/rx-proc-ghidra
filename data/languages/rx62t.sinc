@@ -1732,8 +1732,8 @@ popregs: is popr15 & popr14 & popr13 & popr12 & popr11 & popr10 & popr9 & popr8 
 
 ### (2) RTSD src, Rd-Rd2
 :RTSD "#"^imm, reg4_4^"-"^reg0_4    is op0_8 = 0x3F; op4_4 > 0 & op0_4 >= op4_4 & op4_4 & op0_4 & reg4_4 & reg0_4 & popregs; imm8 [ imm = imm8 * 4; ] {
-    local n_regs = reg0_4 - reg4_4 + 1;
-    SP = SP + (imm - n_regs * 4);
+    # imm covers the saved registers too; release only the locals before popping Rd..Rd2
+    SP = SP + (imm - (op0_4 - op4_4 + 1) * 4);
 
     build popregs;
     pop32(PC);
