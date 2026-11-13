@@ -68,7 +68,35 @@ public class RxVectorTest extends GhidraScript {
     /** Structural (non-vector) checks; each entry is {name, error-or-null}. Extended by later tasks. */
     private List<String[]> structuralChecks() {
         List<String[]> out = new ArrayList<>();
+        out.add(new String[] { "layout", checkLayout() });
         return out;
+    }
+
+    /** Base registers must not overlap, and the core register offsets must stay stable (old projects). */
+    private String checkLayout() {
+        String[] core = { "SP", "R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10", "R11", "R12",
+            "R13", "R14", "R15", "ISP", "USP", "INTB", "PC", "PSW", "BPC", "BPSW", "FINTV", "FPSW", "EXTB" };
+        StringBuilder err = new StringBuilder();
+        for (int i = 0; i < core.length; i++) {
+            ghidra.program.model.lang.Register r = currentProgram.getLanguage().getRegister(core[i]);
+            if (r == null) err.append(core[i]).append(" missing; ");
+            else if (!r.isBaseRegister())
+                err.append(core[i]).append(" is part of ").append(r.getBaseRegister().getName()).append("; ");
+            else if (r.getOffset() != 4L * i || r.getMinimumByteSize() != 4)
+                err.append(core[i]).append(" at 0x").append(Long.toHexString(r.getOffset())).append("; ");
+        }
+        List<ghidra.program.model.lang.Register> base = new ArrayList<>();
+        for (ghidra.program.model.lang.Register r : currentProgram.getLanguage().getRegisters())
+            if (r.isBaseRegister() && !r.isProcessorContext()) base.add(r);
+        for (int i = 0; i < base.size(); i++)
+            for (int j = i + 1; j < base.size(); j++) {
+                ghidra.program.model.lang.Register a = base.get(i), b = base.get(j);
+                long a0 = a.getOffset(), a1 = a0 + a.getMinimumByteSize();
+                long b0 = b.getOffset(), b1 = b0 + b.getMinimumByteSize();
+                if (a.getAddressSpace().equals(b.getAddressSpace()) && a0 < b1 && b0 < a1)
+                    err.append(a.getName()).append(" overlaps ").append(b.getName()).append("; ");
+            }
+        return err.length() == 0 ? null : err.toString();
     }
 
     private void report(boolean ok, String id, String detail) {

@@ -31,7 +31,7 @@ define register offset=0x100 size=4 [ contextreg LIREG ];
 ## R0 = SP. Can be interrupt SP (ISP) or user SP (USP) based on stack pointer select bit in PSW.
 #define register offset=0x00 size=4 SP;
 
-define register offset=0x64 size=8 ACC;
+define register offset=0x80 size=8 ACC;   # not 0x64: that is EXTB
 #define register offset=0x64 size=8 [ A0 A1 ]; # No A1 in RX62T, but other RXv2 may have it
 
 # Bit range registers
