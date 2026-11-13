@@ -612,7 +612,8 @@ popregs: is popr15 & popr14 & popr13 & popr12 & popr11 & popr10 & popr9 & popr8 
 
 ## BCLR Rs, dsp[Rd]
 :BCLR reg0_4, ld_dst       is op0_8 = 0xFC; op2_6 = 0b11001 & ld0_2 != 0b11 & ld0_2; reg0_4 ... & ld_dst [ mode_ld = ld0_2; mode_mi = 0; ] {
-	*:4 ld_dst = (*:4 ld_dst) & ~(1 << (reg0_4 & 31));
+	local bitmask:1 = 1 << (reg0_4:1 & 7);
+	*:1 ld_dst = (*:1 ld_dst) & ~bitmask;
 }
 
 
@@ -680,7 +681,8 @@ popregs: is popr15 & popr14 & popr13 & popr12 & popr11 & popr10 & popr9 & popr8 
 
 ## BNOT reg, dsp[Rd]
 :BNOT reg0_4, ld_dst    is op0_8 = 0xFC; op2_6 = 0b11011 & ld0_2 != 0b11 & ld0_2; reg0_4 ... & ld_dst [ mode_ld = ld0_2; mode_mi = 0; ] {
-	*:4 ld_dst = (*:4 ld_dst) ^ (1 << (reg0_4 & 31));
+	local bitmask:1 = 1 << (reg0_4:1 & 7);
+	*:1 ld_dst = (*:1 ld_dst) ^ bitmask;
 }
 
 ## BNOT #IMM:5, reg
@@ -690,7 +692,7 @@ popregs: is popr15 & popr14 & popr13 & popr12 & popr11 & popr10 & popr9 & popr8 
 
 ## BNOT reg, reg
 :BNOT reg0_4, reg4_4    is op0_8 = 0xFC; op2_6 = 0b11011 & ld0_2 = 0b11; reg4_4 & reg0_4 {
-	reg4_4 = reg4_4 ^ (reg0_4 & 31);
+	reg4_4 = reg4_4 ^ (1 << (reg0_4 & 31));
 }
 
 
@@ -748,8 +750,8 @@ popregs: is popr15 & popr14 & popr13 & popr12 & popr11 & popr10 & popr9 & popr8 
 
 ## BSET Rs, dsp[Rd]
 :BSET reg0_4, ld_dst    is op0_8 = 0xFC; op2_6 = 0b11000 & ld0_2 != 0b11 & ld0_2; reg0_4 ... & ld_dst [ mode_ld = ld0_2; mode_mi = 0; ] {
-	local bitmask:4 = 1 << (reg0_4 & 31);
-	*:4 ld_dst = (*:4 ld_dst) | bitmask;
+	local bitmask:1 = 1 << (reg0_4:1 & 7);
+	*:1 ld_dst = (*:1 ld_dst) | bitmask;
 }
 
 ## BSET #IMM:5, Rd
