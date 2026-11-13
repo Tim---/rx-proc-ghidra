@@ -1,6 +1,8 @@
 # sleigh include file for RXv2 language instructions
+# Instruction tokens are little-endian in every variant: RX fetches code as little-endian words
+# even when data is big-endian, so code must be presented to Ghidra in fetch order.
 
-define token opbyte (8)
+define token opbyte (8) endian=little
    op0_8     = (0,7)
    op6_2     = (6,7)
    op5_3     = (5,7)
@@ -90,7 +92,7 @@ define context contextreg
    pass_dsp = (24,31) noflow
 ;
 
-define token data8 (8)
+define token data8 (8) endian=little
    imm0_3   = (0,2)
    imm4     = (0,3)
    imm8		= (0,7)
@@ -98,19 +100,19 @@ define token data8 (8)
    simm8    = (0,7) signed
 ;
 
-define token data16 (16)
+define token data16 (16) endian=little
    timm4        = (12,15)
    imm16        = (0,15)
    sign16	= (15,15)
    simm16	= (0,15) signed
 ;
 
-define token data24 (24)
+define token data24 (24) endian=little
    imm24        = (0,23)
    simm24       = (0,23) signed
 ;
 
-define token data32 (32)
+define token data32 (32) endian=little
    imm32        = (0,31)
    simm32       = (0,31) signed
 ;
