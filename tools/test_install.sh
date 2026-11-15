@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Self-test for tools/install_extension.sh. Works only in scratch directories under
-# $SCRATCH (default $HOME/rx-install-test); the user's installed extension is never touched.
+# $RX_TEST_SCRATCH (default $HOME/rx-install-test); the user's installed extension is never touched.
 # The SLEIGH compiles run for real (the Flatpak, or GHIDRA_INSTALL_DIR if set), except in the
 # native-mode case, which uses a stub Ghidra installation.
 #
@@ -9,7 +9,8 @@ set -uo pipefail
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 INSTALL="$REPO/tools/install_extension.sh"
-SCRATCH="${SCRATCH:-$HOME/rx-install-test}"
+SCRATCH="${RX_TEST_SCRATCH:-$HOME/rx-install-test}"
+MARKER=".rx-install-test-scratch"
 case "$SCRATCH" in
     "$HOME"/*) ;; *) echo "SCRATCH must be under \$HOME: $SCRATCH" >&2; exit 2 ;;
 esac
@@ -32,12 +33,16 @@ new_ext() {
 run_install() { GHIDRA_RUNNING_CHECK_CMD=true EXT="$SCRATCH/ext" BACKUP_ROOT="$SCRATCH/backups" bash "$INSTALL" "$@"; }
 
 [ -x "$INSTALL" ] || { echo "FAIL: $INSTALL missing or not executable"; exit 1; }
-rm -rf "${SCRATCH:?}"; mkdir -p "$SCRATCH"
+# Only ever delete a directory this script created (it carries the marker file), or an empty one.
+if [ -d "$SCRATCH" ] && [ ! -f "$SCRATCH/$MARKER" ] && [ -n "$(ls -A "$SCRATCH")" ]; then
+    echo "refusing to clear $SCRATCH: not empty and not created by this test (no $MARKER)" >&2; exit 2
+fi
+rm -rf "${SCRATCH:?}"; mkdir -p "$SCRATCH"; : > "$SCRATCH/$MARKER"
 
 # 1. good install: backup outside EXT/data, .sla compiled
 new_ext
 if run_install "$REPO" > "$SCRATCH/good.log" 2>&1; then pass "good install exits 0"; else fail "good install failed (see $SCRATCH/good.log)"; fi
-n_backups=$(find "$SCRATCH/backups" -mindepth 1 -maxdepth 1 -type d | wc -l)
+n_backups=$(find "$SCRATCH/backups" -mindepth 1 -maxdepth 1 -type d -name '*-languages.backup-*' | wc -l)
 [ "$n_backups" -eq 1 ] && pass "one backup under BACKUP_ROOT" || fail "expected 1 backup under BACKUP_ROOT, found $n_backups"
 [ -z "$(find "$SCRATCH/ext/data" -name '*backup*')" ] && pass "no backup under EXT/data" || fail "backup found under EXT/data"
 for s in rx62t rx62t_be; do
@@ -53,7 +58,7 @@ cp -a "$REPO/data/languages" "$SCRATCH/broken/data/"
 echo 'this is not sleigh ;' >> "$SCRATCH/broken/data/languages/rx62t.slaspec"
 run_install "$SCRATCH/broken" > "$SCRATCH/broken.log" 2>&1; rc=$?
 [ "$rc" -ne 0 ] && pass "broken slaspec exits non-zero ($rc)" || fail "broken slaspec exited 0"
-backup=$(find "$SCRATCH/backups" -mindepth 1 -maxdepth 1 -type d | head -1)
+backup=$(find "$SCRATCH/backups" -mindepth 1 -maxdepth 1 -type d -name '*-languages.backup-*' | head -1)
 if [ -n "$backup" ] && diff -r "$backup" "$SCRATCH/ext/data/languages" > /dev/null; then
     pass "languages dir identical to backup after failed compile"
 else

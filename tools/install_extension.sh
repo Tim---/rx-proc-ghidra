@@ -22,7 +22,7 @@ MODE=
 case "${1:-}" in
     --native) MODE=native; shift ;;
     --flatpak) MODE=flatpak; shift ;;
-    -h|--help) sed -n '2,18p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,17p' "$0"; exit 0 ;;
     -*) die "unknown option: $1" ;;
 esac
 [ -n "$MODE" ] || { [ -n "${GHIDRA_INSTALL_DIR:-}" ] && MODE=native || MODE=flatpak; }
@@ -50,7 +50,8 @@ LANG_DIR="$EXT/data/languages"
 # Ghidra reads the language files at startup and holds them; replacing them under a running Ghidra
 # gives a mix of old and new definitions.
 RUNNING_CHECK="${GHIDRA_RUNNING_CHECK_CMD:-ps -eo args}"
-if $RUNNING_CHECK 2> /dev/null | grep -qE '[gG]hidraRun'; then
+procs="$($RUNNING_CHECK 2> /dev/null)" || die "cannot check whether Ghidra is running ($RUNNING_CHECK failed)"
+if grep -qE '[gG]hidraRun' <<< "$procs"; then
     die "Ghidra appears to be running; quit Ghidra and run this again"
 fi
 
