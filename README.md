@@ -29,13 +29,62 @@ byte-reversed within each aligned 32-bit word. To analyse such an image:
 
 Which regions are code is image-specific, so it is not done by this module.
 
-## Installation
+## Install
 
-`unzip ghidra_9.0.2_PUBLIC_20190626_RX62T.zip -d ${ghidra_install_dir}/Ghidra/Extensions`
+### From the release zip
 
-## Building
+A release zip installs only into the Ghidra version in its name. For example,
+`ghidra_12.1.3_PUBLIC_<date>_RX62T.zip` is for Ghidra 12.1.3, native or Flatpak.
 
-`gradle -PGHIDRA_INSTALL_DIR=<ghidra_install_dir>`
+1. In Ghidra, open *File → Install Extensions*.
+2. Click `+` and pick the zip.
+3. Restart Ghidra.
+
+If an older RX62T is listed, uninstall it and restart Ghidra first.
+
+To build the zip yourself, run `tools/build_release.sh`. It writes the zip to `dist/`. It compiles
+the `.sla` files with the SLEIGH compiler of the Ghidra in `GHIDRA_INSTALL_DIR`. If that is unset,
+it uses the Flatpak (`GHIDRA_FLATPAK=org.ghidra_sre.Ghidra`). The zip holds only the language
+files. The Java sources under `src/` are unused template stubs, so they are not built.
+
+### From source
+
+To try changes from a checkout:
+
+1. Install the zip once.
+2. Start Ghidra, then quit it.
+3. Run the install script:
+
+```
+GHIDRA_INSTALL_DIR=<ghidra install> tools/install_extension.sh    # native Ghidra
+tools/install_extension.sh --flatpak                              # Flatpak Ghidra
+```
+
+The script copies the language files from the checkout into the installed extension and compiles
+them. It uses these defaults:
+- Native: `~/.config/ghidra/ghidra_<version>_PUBLIC/Extensions/RX62T`.
+- Flatpak: `~/.var/app/<app id>/config/ghidra/ghidra_<version>_FLATPAK/Extensions/RX62T`.
+- `GHIDRA_VERSION` defaults to `12.1.3`, and `EXT` overrides the extension directory.
+
+The script first backs up the old `data/languages` to `~/ghidra_extension_backups`, or to
+`BACKUP_ROOT` if set. If a SLEIGH compile fails, it puts the backup back. It refuses to run while
+Ghidra is open. `tools/test_install.sh` tests it in scratch directories.
+
+**Never keep backups under `Extensions/RX62T/data/`.** Ghidra loads every `.ldefs` file below
+`data/`. So a copy such as `data/languages.bak/rx62t.ldefs` defines the languages a second time,
+and the old definition can win. The log then shows
+`Language rx62t:LE:32:default previously defined`.
+
+## Known gaps
+
+- **Unreachable-block warnings in dispatcher-style functions.** Some functions test RAM bytes with
+  chains of `CMP`/`BNE`. These can still give many "Removing unreachable block" warnings. No
+  branches inside instructions are involved. The cause is not yet known.
+- **Leftover `in_stack_*` parameters.** These remain mostly where data tables were disassembled as
+  code. That is mainly a seeding problem in the analysed image. A calling-convention cause has not
+  been ruled out.
+- **Decompiler Parameter ID is off by default** for this language. Enable it in the auto-analysis
+  options for better function signatures. Headless, set it in a pre-script.
 
 ## Testing
 
